@@ -1,13 +1,7 @@
-package player
+package players
 
-type player struct {
-	team int
-}
+type playersMap map[uint8]bool
 
-func NewPlayer(team int) player {
-	return player{team}
-}
-
-func (p *player) GetPayerTeam() int {
-	return p.team
+func NewPlayers(team1 uint8, team2 uint8) bool {
+	return false
 }

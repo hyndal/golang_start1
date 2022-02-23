@@ -3,13 +3,11 @@ package main
 import (
 	"fmt"
 	"main/internal/game"
-	"main/internal/player"
 )
 
-func main() {
+const size int = 3
 
-	game := game.NewGame(3)
-	fmt.Println(game)
+func main() {
 
 	var team1, team2 int
 	fmt.Println("За какую команду вы будете играть? (1 - крестики, 2 - нолики)")
@@ -18,32 +16,31 @@ func main() {
 		fmt.Println("Вы выбрали неверную команду")
 	}
 	if team1 == 1 {
-		team2 = -1
+		team2 = 2
 	} else {
-		team1 = -1
 		team2 = 1
 	}
-	player1 := player.NewPlayer(team1)
-	player2 := player.NewPlayer(team2)
+	game := game.NewGame(size, team1, team2)
+
 	for {
-		var x, y int
-		fmt.Println("Введите координаты следующего хода")
-		fmt.Scan(&x, &y)
-		theEnd, err := game.NewMove(player1.GetPayerTeam(), x, y)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		if theEnd {
-			fmt.Println("Игра окончена!")
-			break
-		} else {
-			theEnd := game.GenereteMove(player2.GetPayerTeam())
-			if theEnd {
-				fmt.Println("Игра окончена!")
-				break
+		for i := 1; i < size; i++ {
+			for {
+				var x, y int
+				fmt.Printf("Игрок %d - Введите координаты следующего хода\n", i)
+				fmt.Scan(&x, &y)
+				theEnd, moveMade, err := game.NewMove(i, x, y)
+				if theEnd {
+					game.PrintGame()
+					fmt.Println(err)
+					return
+				}
+				if moveMade {
+					game.PrintGame()
+					break
+				} else {
+					fmt.Println(err)
+				}
 			}
 		}
-		fmt.Println(game.GetPlayingField())
 	}
 }
