@@ -5,27 +5,25 @@ import (
 	"fmt"
 )
 
-const winSize int = 3
+type player struct {
+	ID       int
+	name     string
+	computer bool
+	init     bool
+}
 
 type game struct {
+	ID           int
 	size         int
+	winSize      int
+	gameStatus   int
 	moves        int
-	lastMove     int
+	nextPlayer   int
 	playingField [][]int
-	playersMap   map[int]bool
+	players      []player
 }
 
-func NewGame(size int, team1 int, team2 int) game {
-
-	newGame := game{size, 0, 0, make([][]int, size), make(map[int]bool)}
-	for i := range newGame.playingField {
-		newGame.playingField[i] = make([]int, size)
-	}
-	newGame.playersMap[team1] = false
-	newGame.playersMap[team2] = true
-
-	return newGame
-}
+var games []game
 
 func (g *game) genereteMove(playerTeam int) (int, int) {
 
@@ -41,41 +39,117 @@ func (g *game) genereteMove(playerTeam int) (int, int) {
 
 	return retX, retY
 }
-func (g *game) NewMove(playerTeam int, x int, y int) (bool, bool, error) {
+
+func CreateGame(size int, winSize int, players int) int {
+
+	var gameID int = len(games) + 1
+	newGame := game{gameID, size, winSize, 0, 0, 0, make([][]int, size), make([]player, players)}
+	for i := range newGame.playingField {
+		newGame.playingField[i] = make([]int, size)
+	}
+	games = append(games, newGame)
+
+	return gameID
+}
+
+func GetGameStatus(gameID int) (game, error) {
+
+	if gameID > len(games) || gameID <= 0 {
+		return game{}, errors.New("неверный идентификатор игры")
+	}
+
+	return games[gameID-1], nil
+
+}
+
+func AddPlayer(gameID int, playerID int, playerName string, computer bool) error {
+
+	if gameID > len(games) || gameID <= 0 {
+		return errors.New("неверный идентификатор игры")
+	}
+	g := games[gameID-1]
+	if g.gameStatus != 0 {
+		return errors.New("игра уже началась")
+	}
+	if playerID > len(g.players) {
+		return errors.New("неверный идентификатор игрока")
+	}
+	g.players[playerID-1].name = playerName
+	g.players[playerID-1].computer = computer
+	g.players[playerID-1].init = true
+
+	return nil
+
+}
+
+func StartGame(gameID int) error {
+
+	fmt.Println(games)
+
+	if gameID > len(games) || gameID <= 0 {
+		return errors.New("неверный идентификатор игры")
+	}
+	g := games[gameID-1]
+	if g.gameStatus != 0 {
+		return errors.New("игра уже началась")
+	}
+	for i := range g.players {
+		if !g.players[i].init {
+			return errors.New("не все игроки добавлены")
+		}
+	}
+	g.gameStatus = 1
+	g.nextPlayer = 1
+
+	return nil
+
+}
+
+func MakeMove(gameID int, playerID int, x int, y int) error {
+
+	if gameID > len(games) || gameID <= 0 {
+		return errors.New("неверный идентификатор игры")
+	}
+	g := games[gameID-1]
+	if g.gameStatus == 1 {
+		return errors.New("игра еще не началась")
+	}
+	if playerID > len(g.players) || playerID <= 0 {
+		return errors.New("неверный идентификатор игрока")
+	}
+	if playerID != g.nextPlayer {
+		return fmt.Errorf("ожидается ход от игрока %d", g.nextPlayer)
+	}
 	if x > g.size || x < 0 || y > g.size || y < 0 {
-		return false, false, errors.New("ячейка находится за границами поля")
+		return errors.New("ячейка находится за границами поля")
 	}
 	if g.playingField[x][y] != 0 {
-		return false, false, errors.New("ячейка уже занята")
+		return errors.New("ячейка уже занята")
 	}
-	if g.lastMove == playerTeam {
-		return false, false, errors.New("этот игрок только что ходил")
+	g.playingField[x][y] = playerID
+	g.nextPlayer++
+	if g.nextPlayer > len(g.players) {
+		g.nextPlayer = 1
 	}
-	playerComputer, ok := g.playersMap[playerTeam]
-	if !ok {
-		return false, false, errors.New("такого игрока нет")
-	}
-	if playerComputer {
-		x, y = g.genereteMove(playerTeam)
-	}
-	g.playingField[x][y] = playerTeam
-	g.lastMove = playerTeam
 	g.moves++
-	if g.endGame(x, y, playerTeam) {
-		return true, true, errors.New("вы выиграли")
+	if g.endGame(x, y, playerID) {
+		g.gameStatus = 2
+		return errors.New("вы выиграли")
 	}
 	if g.moves == g.size*g.size {
-		return true, true, errors.New("ходов больше нет")
+		g.gameStatus = 2
+		return errors.New("ходов больше нет")
 	}
 
-	return false, true, nil
+	return nil
 }
+
 func (g game) endGame(x int, y int, team int) bool {
 
-	minX := x - winSize + 1
-	maxX := x + winSize
-	minY := y - winSize + 1
-	maxY := y + winSize
+	minX := x - g.winSize + 1
+	maxX := x + g.winSize
+	minY := y - g.winSize + 1
+	maxY := y + g.winSize
 
 	qLength1 := 0
 	qLength2 := 0
@@ -95,7 +169,7 @@ func (g game) endGame(x int, y int, team int) bool {
 				qLength2 = 0
 			}
 		}
-		if qLength1 == winSize || qLength2 == winSize {
+		if qLength1 == g.winSize || qLength2 == g.winSize {
 			return true
 		}
 		j++
@@ -119,7 +193,7 @@ func (g game) endGame(x int, y int, team int) bool {
 				qLength2 = 0
 			}
 		}
-		if qLength1 == winSize || qLength2 == winSize {
+		if qLength1 == g.winSize || qLength2 == g.winSize {
 			return true
 		}
 		j--
@@ -128,7 +202,8 @@ func (g game) endGame(x int, y int, team int) bool {
 	return false
 }
 
-func (g *game) PrintGame() {
+func PrintGame(gameID int) {
+	g := games[gameID-1]
 	for i := range g.playingField {
 		fmt.Println(g.playingField[i])
 	}
