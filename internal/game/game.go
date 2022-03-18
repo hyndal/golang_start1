@@ -5,6 +5,11 @@ import (
 	"fmt"
 )
 
+type position struct {
+	x   int `json:"x"`
+	y   int `json:"y"`
+	plr int `json:"plr"`
+}
 type player struct {
 	ID       int
 	name     string
@@ -25,6 +30,10 @@ type game struct {
 
 var games []game
 
+type GamesStruct struct {
+	list []game
+}
+
 func (g *game) genereteMove(playerTeam int) (int, int) {
 
 	var retX, retY int
@@ -40,14 +49,14 @@ func (g *game) genereteMove(playerTeam int) (int, int) {
 	return retX, retY
 }
 
-func CreateGame(size int, winSize int, players int) int {
+func (gs *GamesStruct) CreateGame(size int, winSize int, players int) int {
 
-	var gameID int = len(games) + 1
+	var gameID int = len(gs.list) + 1
 	newGame := game{gameID, size, winSize, 0, 0, 0, make([][]int, size), make([]player, players)}
 	for i := range newGame.playingField {
 		newGame.playingField[i] = make([]int, size)
 	}
-	games = append(games, newGame)
+	gs.list = append(gs.list, newGame)
 
 	return gameID
 }
@@ -202,9 +211,21 @@ func (g game) endGame(x int, y int, team int) bool {
 	return false
 }
 
-func PrintGame(gameID int) {
-	g := games[gameID-1]
-	for i := range g.playingField {
-		fmt.Println(g.playingField[i])
+func (gs GamesStruct) PrintGame(gameID int) (interface{}, error) {
+	if len(gs.list) == 0 {
+		return nil, errors.New("неверный идентификатор игры")
 	}
+	g := gs.list[gameID-1]
+	var positions = make([]position, g.size*g.size)
+	var i int = 0
+	for x := range g.playingField {
+		for y := range g.playingField[x] {
+			positions[i].x = x
+			positions[i].y = y
+			positions[i].plr = g.playingField[x][y]
+			i++
+		}
+	}
+
+	return positions, nil
 }
